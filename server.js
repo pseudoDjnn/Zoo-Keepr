@@ -1,9 +1,16 @@
+const fs = require("fs");
+const path = require("path");
 const express = require("express");
 // creating a route after imports
 const { animals } = require("./data/animals");
 
 const PORT = process.env.PORT || 3001;
 const app = express();
+
+// parse incoming string or array data
+app.use(express.urlencoded({ extended: true }));
+// parse incoing JSON data
+app.use(express.json());
 
 function filterByQuery(query, animalsArray) {
   let personalityTraitsArray = [];
@@ -55,6 +62,36 @@ function findById(id, animalsArray) {
   return result;
 }
 
+function createNewAnimal(body, animalsArray) {
+  console.log(body);
+  // output function's main code will go here!
+  const animal = body;
+  animalsArray.push(animal);
+  fs.writeFileSync(
+    path.join(__dirname, "./data/animals.json"),
+    JSON.stringify({ animals: animalsArray }, null, 2)
+  );
+
+  // return finished code to post route for response
+  return animal;
+}
+
+function validateAnimal(animal) {
+  if (!animal.name || typeof animal.name !== "string") {
+    return false;
+  }
+  if (!animal.species || typeof animal.species !== "string") {
+    return false;
+  }
+  if (!animal.diet || typeof animal.diet !== "string") {
+    return false;
+  }
+  if (!animal.personalityTraits || !Array.isArray(animal.personalityTraits)) {
+    return false;
+  }
+  return true;
+}
+
 app.get("/api/animals", (req, res) => {
   let results = animals;
   if (req.query) {
@@ -70,6 +107,21 @@ app.get("/api/animals/:id", (req, res) => {
   } else {
     res.sendStatus(404);
   }
+});
+
+app.post("/api/animals", (req, res) => {
+  // req.body is where our incoming content will be
+  // set id based on what the nest index of the array will be
+  req.body.id = animals.length.toString();
+
+  // add animal to json file and animals array in this function
+  if (!validateAnimal(req.body)) {
+    res.status(400).send("this animal is not properly formatted.");
+  } else {
+    const animal = createNewAnimal(req.body, animals);
+    res.json(animal);
+  }
+  // console.log(req.body);
 });
 
 app.listen(PORT, () => {
